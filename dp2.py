@@ -18,8 +18,9 @@ def main():
     collection = db["Data_Project_2"]
 
     path = "./data"
-    count = 0
-    failed_files = 0
+    total_records_imported = 0
+    total_failed_imports = 0
+    total_corrupted_documents = 0
 
     for root, dirs, files in os.walk(path):
         for file in files:
@@ -29,25 +30,29 @@ def main():
                     file_data = json.load(f)
 
                 if isinstance(file_data, list):
-                    collection.insert_many(file_data)
+                    result = collection.insert_many(file_data)
+                    total_records_imported += len(result.inserted_ids)
                 else:
-                    collection.insert_one(file_data)
-
-                count += len(file_data) if isinstance(file_data, list) else 1
+                    result = collection.insert_one(file_data)
+                    total_records_imported += 1 if result.inserted_id else 0
 
             except json.JSONDecodeError as e:
                 print(f"Error processing file {file}: {e}")
-                failed_files += 1
+                total_corrupted_documents += 1
                 continue
             except errors.PyMongoError as e:
                 print(f"Database error while processing file {file}: {e}")
+                total_failed_imports += 1
                 continue
 
     with open("count.txt", "w") as count_file:
-        count_file.write(str(count))
+        count_file.write(f"Total records imported: {total_records_imported}\n")
+        count_file.write(f"Total failed imports: {total_failed_imports}\n")
+        count_file.write(f"Total corrupted documents: {total_corrupted_documents}\n")
 
-    print(f"Total records imported: {count}")
-    print(f"Files failed to process: {failed_files}")
+    print(f"Total records imported: {total_records_imported}")
+    print(f"Total failed imports: {total_failed_imports}")
+    print(f"Total corrupted documents: {total_corrupted_documents}")
 
 
 if __name__ == "__main__":
